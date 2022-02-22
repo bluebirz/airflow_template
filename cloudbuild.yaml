@@ -1,0 +1,50 @@
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+#    python -m unittest /workspace/dag_integrity_test.py
+
+steps:
+# - name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+#   args: ["python","--version"]
+# - name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+#   args: ["which","python"]
+- name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+  args: ["airflow","initdb"]
+- name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+  args: ["airflow", "variables" ,"--set", "sparrow_env", "unittest_env"]
+- name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+  args: ["mkdir","${_DESTINATION_FOLDER}"]
+- name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+  args: ["cp","-r","${_SOURCE_FOLDER}","${_DESTINATION_FOLDER}"]
+# - name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+#   id: Validation Test Validate the integrity of the DAG files.
+#   entrypoint: python
+#   env:
+#   - AIRFLOW__CORE__DAGS_FOLDER=/workspace/${_DESTINATION_FOLDER}/${_SOURCE_FOLDER}
+#   args:
+#   - -m
+#   - unittest
+#   - dag_integrity_test.py
+- name: 'gcr.io/$PROJECT_ID/airflow-dags-builder'
+  id: Validation Test Validate the integrity of the DAG files.
+  env:
+  - AIRFLOW__CORE__DAGS_FOLDER=/workspace/${_DESTINATION_FOLDER}/${_SOURCE_FOLDER}
+  args: ["bash","./unittest_script.sh"]
+- name: gcr.io/cloud-builders/gcloud
+  id: Deploy DAGs
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      gcloud composer environments storage dags import \
+        --source=${_SOURCE_FOLDER} \
+        --environment=${_COMPOSER_ENV_NAME} \
+        --location=${_COMPOSER_ENV_LOCATION} \
+        --destination=${_DESTINATION_FOLDER}
